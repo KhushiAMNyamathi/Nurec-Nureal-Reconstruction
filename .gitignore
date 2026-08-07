@@ -1,0 +1,22 @@
+# Node
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# COLMAP / reconstruction output
+colmap/
+uploads/
+*.db
+*.ply
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
