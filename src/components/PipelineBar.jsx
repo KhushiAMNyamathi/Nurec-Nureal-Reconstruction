@@ -1,10 +1,15 @@
 const STEPS = [
-  { id: "capture", label: "Capture", sub: "CaptureScene", num: 1 },
+  { id: "capture", label: "Capture", sub: "Capture Scene", num: 1 },
   { id: "colmap", label: "COLMAP", sub: "Reconstruction", num: 2 },
-  { id: "3dgut", label: "3DGUT", sub: "NeuralTraining", num: 3 },
-  { id: "isaac", label: "IsaacSim", sub: "Deployment", num: 4 },
+  { id: "3dgut", label: "3DGUT", sub: "Neural Training", num: 3 },
+  {
+    id: "segmentation",
+    label: "3D Semantic Segmentation",
+    sub: "Scene Segmentation",
+    num: 4,
+  },
+  { id: "isaac", label: "Isaac Sim", sub: "Deployment", num: 5 },
 ];
-
 export default function PipelineBar({ pipeline, activePage, onNavigate }) {
   return (
     <div style={styles.wrapper}>
@@ -72,7 +77,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center", // ⭐ THIS CENTERS EVERYTHING
     width: "100%",
-    maxWidth: 900, // controls NVIDIA-like compact look
+    maxWidth: 1200               , // controls NVIDIA-like compact look
     margin: "0 auto", // extra safety centering
   },
   wrapper: {
@@ -131,7 +136,7 @@ const styles = {
   },
   line: {
     height: 2,
-    width: 140,
+    width: 90,
     margin: "0 16px",
     borderRadius: 2,
     transition: "background 0.3s",
