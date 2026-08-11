@@ -3,6 +3,11 @@ const NAV_ITEMS = [
   { id: "capture", label: "Capture", icon: "⊙" },
   { id: "colmap", label: "COLMAP", icon: "◈" },
   { id: "3dgut", label: "3DGUT", icon: "◉" },
+  {
+    id: "segmentation",
+    label: "3D Semantic Segmentation",
+    icon: "◇",
+  },
   { id: "isaac", label: "Isaac Sim", icon: "⊕" },
   { id: "logs", label: "Logs", icon: "≡" },
 ];
