@@ -10,12 +10,9 @@ import {
   Grid,
   ProgressBar,
 } from "../components/ui";
-
 import colmap from "../images/colmap.png";
 import { useState } from "react";
 import PointCloudViewer from "../components/PointCloudViewer";
-
-
 const INITIAL_STEPS = [
   {
     id: "feature",
@@ -48,18 +45,13 @@ const INITIAL_STEPS = [
     time: null,
   },
 ];
-
 export default function ColmapPage({
   onNavigate,
   imagePath
 }) {
-
-
   // ==========================
   // STATES
   // ==========================
-
-
   const [projectPath, setProjectPath] =
     useState("");
   const [showViewer, setShowViewer] = useState(false);
@@ -71,83 +63,102 @@ export default function ColmapPage({
   const [singleCamera, setsingleCamera] = useState(true);
   const [affineShape, setAffineShape] = useState(true);
   const [domainPooling, setDomainPooling] = useState(true);
-
   const [maxMatches, setMaxMatches] = useState(32768);
-
   const [maxImageSize, setMaxImageSize] = useState(2000);
-
   const [gpuMatching, setGpuMatching] =
     useState(false);
-
-
   const [running, setRunning] =
     useState(false);
   const [colmapCompleted, setColmapCompleted] =
     useState(false);
-
   const [progress, setProgress] =
     useState(0);
-
-
   const [steps, setSteps] =
     useState(INITIAL_STEPS);
-
   const [results, setResults] =
     useState({
-
       images: 0,
       cameras: 0,
       points: 0,
       error: 0
-
     });
-
-
   // functions
-  const openColmapViewer = async () => {
-
+  const handleExport = async (format) => {
     try {
-
+      // Open Windows Save As dialog
+      const fileResponse = await fetch(
+        `http://localhost:8000/select-export-file?format=${format}`
+      );
+      const fileData = await fileResponse.json();
+      if (!fileResponse.ok) {
+        throw new Error(
+          fileData.detail || "Could not select output file"
+        );
+      }
+      // User cancelled the dialog
+      if (!fileData.path) {
+        return;
+      }
+      console.log("Selected output:", fileData.path);
+      // Run COLMAP export
+      const response = await fetch(
+        "http://localhost:8000/api/colmap/export",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            format: format,
+            output_path: fileData.path
+          })
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Export failed"
+        );
+      }
+      alert(
+        `Export successful!\n\nSaved to:\n${data.outputPath}`
+      );
+    } catch (error) {
+      console.error("Export error:", error);
+      alert(
+        `Export failed:\n${error.message}`
+      );
+    }
+  };
+  const openColmapViewer = async () => {
+    try {
       const response = await fetch(
         "http://localhost:8000/open-colmap",
         {
           method: "POST"
         }
       );
-
-
       const data = await response.json();
-
       console.log(data);
-
-
     }
-
     catch (error) {
-
       console.error(
         "Failed to open COLMAP",
         error
       );
-
     }
-
   };
   const openColmap = async () => {
-
     await fetch(
       "http://localhost:8000/open-colmap",
       {
         method: "POST"
       }
     );
-
   };
   const updateStep = (id) => {
-
     setSteps(prev =>
       prev.map(step => {
-
         if (step.id === id) {
           return {
             ...step,
@@ -155,29 +166,19 @@ export default function ColmapPage({
             time: "Completed"
           };
         }
-
         return step;
-
       })
     );
-
   };
-
   const browseProjectFolder = async () => {
     console.log("Browse button clicked");
-
     try {
-
       const response = await fetch(
         "http://127.0.0.1:8000/select-project-folder"
       );
-
       console.log("Response:", response);
-
       const data = await response.json();
-
       console.log("Data:", data);
-
       if (data.folder) {
         setProjectPath(data.folder);
       }
@@ -185,33 +186,23 @@ export default function ColmapPage({
       console.error("ERROR:", err);
     }
   };
-
   const handleFolderSelect = (e) => {
     const files = Array.from(e.target.files);
-
     setSelectedFiles(files);
-
     console.log(files);
-
     console.log(files[0].webkitRelativePath);
   };
-
   // ==========================
   // RUN COLMAP
   // ==========================
-
   const canRunColmap =
     projectPath &&
     imagePath &&
     !running;
   const processColmapLog = (log) => {
-
     console.log("PROCESSING LOG:", log);
-
-
     // Feature Extraction
     if (log.includes("feature_extraction.cc")) {
-
       setSteps(prev =>
         prev.map(step =>
           step.id === "feature"
@@ -223,12 +214,8 @@ export default function ColmapPage({
             step
         )
       );
-
     }
-
-
     if (log.includes("Features:")) {
-
       setSteps(prev =>
         prev.map(step =>
           step.id === "feature"
@@ -241,18 +228,10 @@ export default function ColmapPage({
             step
         )
       );
-
-
       setProgress(25);
-
     }
-
-
-
     // Matching
-
     if (log.includes("Loading matches")) {
-
       setSteps(prev =>
         prev.map(step =>
           step.id === "matching"
@@ -265,14 +244,8 @@ export default function ColmapPage({
             step
         )
       );
-
     }
-
-
-
     if (log.includes("Building correspondence graph")) {
-
-
       setSteps(prev =>
         prev.map(step =>
           step.id === "matching"
@@ -286,19 +259,10 @@ export default function ColmapPage({
             step
         )
       );
-
-
       setProgress(45);
-
     }
-
-
-
     // Sparse Reconstruction
-
     if (log.includes("Registering image")) {
-
-
       setSteps(prev =>
         prev.map(step =>
           step.id === "mapping"
@@ -311,17 +275,9 @@ export default function ColmapPage({
             step
         )
       );
-
-
       setProgress(65);
-
     }
-
-
-
     if (log.includes("Keeping successful reconstruction")) {
-
-
       setSteps(prev =>
         prev.map(step =>
           step.id === "mapping"
@@ -335,45 +291,29 @@ export default function ColmapPage({
             step
         )
       );
-
-
       setProgress(90);
-
     }
     // Complete
-
     if (log.includes("COLMAP DONE")) {
       setProgress(100);
     }
-
   };
   const socket = new WebSocket(
     "ws://localhost:8000/colmap-progress"
   );
-
-
   socket.onopen = () => {
-
     socket.send(
       JSON.stringify({
-
         project_path:
           "D:/recon/colmap_project",
-
         image_path:
           "D:/datasets/warehouse_scan/images"
-
       })
     );
-
   };
-
-
-
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     console.log(data);
-
     if (data.stage) {
       setColmapStatus(
         data.stage
@@ -385,21 +325,13 @@ export default function ColmapPage({
         data.log
       ]);
     }
-
   }
-
   const runColmap = async () => {
-
     try {
-
       setRunning(true);
       setProgress(0);
-
-
       updateStep("feature");
       setProgress(20);
-
-
       const response = await fetch(
         "http://127.0.0.1:8000/run-colmap",
         {
@@ -408,7 +340,6 @@ export default function ColmapPage({
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-
             project_path: projectPath,
             image_path: imagePath,
             camera_model: cameraModel,
@@ -417,51 +348,30 @@ export default function ColmapPage({
             affine_shape: affineShape,
             domain_pooling: domainPooling,
             gpu_matching: gpuMatching
-
           })
         }
       );
-
-
       updateStep("matching");
       setProgress(40);
-
-
       updateStep("mapping");
       setProgress(70);
-
-
       updateStep("bundle");
       setProgress(90);
-
-
-
       const data = await response.json();
       console.log(
         "COLMAP DATA:",
         data
       );
-
-
       if (data.status === "success") {
-
         const url =
           `http://127.0.0.1:8000/point-cloud?project_path=${encodeURIComponent(projectPath)}`;
-
-
         console.log(
           "PLY URL:",
           url
         );
-
-
         // setPointCloudUrl(url);
-
       }
-
-
       if (data.status === "success") {
-
         setColmapCompleted(true);
         setProgress(100);
         updateStep("output");
@@ -472,42 +382,24 @@ export default function ColmapPage({
             time: "Completed"
           }))
         );
-
-
         setResults({
-
           images: data.images || 0,
           cameras: data.cameras || 0,
           points: data.points || 0,
           error: data.error || 0
-
         });
-
       }
-
-
     }
-
-
     catch (error) {
-
       console.error(
         "COLMAP ERROR",
         error
       );
-
     }
-
-
     finally {
-
       setRunning(false);
-
     }
-
   };
-
-
   return (
     <div>
       <div
@@ -518,10 +410,7 @@ export default function ColmapPage({
           marginBottom: 16,
         }}
       >
-
-
         <div>
-
           <h1
             style={{
               fontSize: 18,
@@ -531,53 +420,36 @@ export default function ColmapPage({
           >
             COLMAP Reconstruction
           </h1>
-
-
           <p
             style={{
               fontSize: 12,
               color: "var(--text-secondary)"
             }}
           >
-
             Run COLMAP to estimate camera poses and
             generate sparse point cloud from images.
-
           </p>
-
-
         </div>
-
-
         <BtnSecondary>
           ↗ COLMAP Documentation
         </BtnSecondary>
-
-
       </div>
       <Grid cols={3} gap={14}>
-
-
         {/* card 1 */}
-
         <Card>
           <div style={styles.cardContent}>
             <SectionTitle num={1}>
               Configuration
             </SectionTitle>
-
             {/* Project Folder */}
             <Label>Project Folder</Label>
-
             <div style={styles.pathRow}>
-
               <input
                 style={styles.pathInput}
                 value={projectPath}
                 readOnly
                 placeholder="Select Project Folder"
               />
-
               <button
                 type="button"
                 style={styles.folderButton}
@@ -586,7 +458,6 @@ export default function ColmapPage({
                 📁
               </button>
             </div>
-
             {/* Images Folder */}
             <Label>
               Images Folder
@@ -598,9 +469,7 @@ export default function ColmapPage({
                 }
               </span>
             </div>
-
             {/* Camera Model */}
-
             <div style={styles.section}>
               <Label>Camera Model</Label>
               <Select
@@ -613,9 +482,7 @@ export default function ColmapPage({
                   "OPENCV",
                 ]}
               />
-
             </div>
-
             {/* Feature Extraction */}
             <div style={styles.section}>
               <Label>Feature Extraction</Label>
@@ -637,7 +504,6 @@ export default function ColmapPage({
                   setsingleCamera(!singleCamera)
                 }
               />
-
               <CheckRow
                 label="Affine Shape"
                 checked={affineShape}
@@ -645,7 +511,6 @@ export default function ColmapPage({
                   setAffineShape(!affineShape)
                 }
               />
-
               <CheckRow
                 label="Domain Pooling"
                 checked={domainPooling}
@@ -653,13 +518,10 @@ export default function ColmapPage({
                   setDomainPooling(!domainPooling)
                 }
               />
-
             </div>
-
             {/* Matching */}
             <div style={styles.section}>
               <Label>Matching</Label>
-
               <CheckRow
                 label="GPU Matching"
                 checked={gpuMatching}
@@ -667,11 +529,9 @@ export default function ColmapPage({
                   setGpuMatching(!gpuMatching)
                 }
               />
-
               {/* <Label style={{ marginTop: 8 }}>
                 Max Matches
               </Label> */}
-
               {/* <input
                 type="number"
                 value={maxMatches}
@@ -680,24 +540,16 @@ export default function ColmapPage({
                 }
                 style={styles.input}
               /> */}
-
             </div>
-
             {/* Output */}
             <Label>Output Folder</Label>
-
             <div style={styles.pathRow}>
-
               <span style={styles.path}>
-
                 {projectPath
                   ? `${projectPath}\\colmap`
                   : "Select Project Folder"}
-
               </span>
-
             </div>
-
             <BtnSecondary
               style={{
                 width: "100%",
@@ -707,7 +559,6 @@ export default function ColmapPage({
             >
               💾 Save Configuration
             </BtnSecondary>
-
             <BtnPrimary
               disabled={!canRunColmap}
               onClick={runColmap}
@@ -720,11 +571,8 @@ export default function ColmapPage({
                 ? "Running COLMAP..."
                 : "▶ Run COLMAP"}
             </BtnPrimary>
-
           </div>
-
         </Card>
-
         {/*  card  2 */}
         <Card>
           <div style={styles.cardContent}>
@@ -745,7 +593,6 @@ export default function ColmapPage({
                 color: "var(--text-muted)",
                 marginBottom: 10
               }}
-
             >
               {progress}%
             </div>
@@ -754,38 +601,21 @@ export default function ColmapPage({
                 <Label>
                   Current Step
                 </Label>
-
                 <strong style={{ fontSize: 11 }}>
-
                   {
-
                     steps.find(
                       s => s.status === "active"
                     )?.label
                     ||
                     "Waiting..."
-
                   }
-
-
                 </strong>
-
-
               </div>
-
-
-
-
-
               <div>
-
                 <Label>
                   Status
                 </Label>
-
-
                 <strong style={{ fontSize: 11 }}>
-
                   {
                     running
                       ?
@@ -797,38 +627,17 @@ export default function ColmapPage({
                         :
                         "Idle"
                   }
-
                 </strong>
-
-
               </div>
-
-
             </Grid>
-
-
-
-
-
             <div style={{ marginTop: 10 }}>
-
-
               {
                 steps.map((s) => (
-
-
                   <div
-
                     key={s.id}
-
                     style={styles.stepRow}
-
                   >
-
-
                     <span>
-
-
                       <span
                         style={{
                           marginRight: 6,
@@ -838,11 +647,8 @@ export default function ColmapPage({
                               "var(--nvidia-green)"
                               :
                               "#999"
-
                         }}
-
                       >
-
                         {
                           s.status === "done"
                             ?
@@ -850,22 +656,10 @@ export default function ColmapPage({
                             :
                             "○"
                         }
-
                       </span>
-
-
-
                       {s.label}
-
-
                     </span>
-
-
-
-
-
                     <span
-
                       style={{
                         fontSize: 10,
                         color: "var(--text-muted)"
@@ -906,49 +700,29 @@ export default function ColmapPage({
                 ⏹ Stop
               </button>
             </div>
-
             <div style={styles.infoBox}>
               <div style={styles.infoTitle}>
                 ℹ️ About COLMAP
-
               </div>
-
-
-
               <div style={styles.infoText}>
-
-
                 COLMAP performs Structure from Motion
                 and Multi View Stereo reconstruction.
                 It estimates camera poses and sparse
                 point clouds.
-
-
               </div>
-
-
             </div>
-
-
-
           </div>
-
-
         </Card>
-
         {/* ================= card 3 PREVIEW ================= */}
-
         <Card>
           <div style={styles.cardContent}>
             <SectionTitle num={3}>
               Reconstruction Preview
             </SectionTitle>
-
             {
               colmapCompleted ? (
                 <PointCloudViewer />
               ) : (
-
                 <div
                   style={{
                     width: "100%",
@@ -964,14 +738,11 @@ export default function ColmapPage({
                 >
                   Run COLMAP to generate reconstruction
                 </div>
-
               )
             }
-
             <Label>
               Results
             </Label>
-
             <div style={styles.statGrid}>
               {
                 [
@@ -980,59 +751,68 @@ export default function ColmapPage({
                   ["Sparse Points", results.points],
                   ["Reproj Error", results.error]
                 ]
-
                   .map(([l, v]) => (
-
                     <div
                       key={l}
                       style={styles.statCard}
                     >
-
                       <div style={{
                         fontSize: 13,
                         fontWeight: 600
                       }}>
                         {v}
                       </div>
-
-
                       <div style={{
                         fontSize: 10,
                         color: "var(--text-muted)"
                       }}>
                         {l}
                       </div>
-
                     </div>
-
                   ))
               }
-
             </div>
             <BtnPrimary
               onClick={() => setShowViewer(true)}
             >
               Open COLMAP Viewer →
             </BtnPrimary>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                marginTop: "12px",
+                flexWrap: "wrap"
+              }}
+            >
+              <BtnPrimary
+                onClick={() => handleExport("NVM")}
+              >
+                Export .NVM
+              </BtnPrimary>
+              <BtnPrimary
+                onClick={() => handleExport("BUNDLER")}
+              >
+                Export .OUT
+              </BtnPrimary>
+              <BtnPrimary
+                onClick={() => handleExport("VRML")}
+              >
+                Export .WRL
+              </BtnPrimary>
+            </div>
             <BtnPrimary
               onClick={() =>
                 onNavigate("3dgut")
               }
             >
               Proceed to 3DGUT →
-
             </BtnPrimary>
-
-
           </div>
-
-
         </Card>
       </Grid>
-
       {
         showViewer && (
-
           <div
             style={{
               position: "fixed",
@@ -1044,7 +824,6 @@ export default function ColmapPage({
               zIndex: 9999
             }}
           >
-
             <div
               style={{
                 width: "92%",
@@ -1055,7 +834,6 @@ export default function ColmapPage({
                 overflow: "hidden"
               }}
             >
-
               <button
                 onClick={() => setShowViewer(false)}
                 style={{
@@ -1075,19 +853,13 @@ export default function ColmapPage({
               >
                 ✕
               </button>
-
               <PointCloudViewer height="100%" />
-
             </div>
-
           </div>
-
         )
       }
     </div>
-
   );
-
 }
 const styles = {
   input: {
@@ -1107,16 +879,12 @@ const styles = {
     flexDirection: "column",
     gap: 6,
   },
-
-
   section: {
     display: "flex",
     flexDirection: "column",
     gap: 4,
     marginBottom: 15,
   },
-
-
   pathRow: {
     display: "flex",
     alignItems: "center",
@@ -1126,8 +894,6 @@ const styles = {
     padding: "6px 10px",
     marginBottom: 8,
   },
-
-
   pathInput: {
     width: "100%",
     border: "none",
@@ -1137,15 +903,11 @@ const styles = {
     fontFamily: "monospace",
     color: "var(--text-secondary)"
   },
-
-
   path: {
     fontSize: 10,
     color: "var(--text-muted)",
     fontFamily: "monospace"
   },
-
-
   stepRow: {
     display: "flex",
     justifyContent: "space-between",
@@ -1154,8 +916,6 @@ const styles = {
     borderBottom: "1px solid #f2f2f2",
     fontSize: 11,
   },
-
-
   stopBtn: {
     flex: 1,
     background: "#333",
@@ -1166,8 +926,6 @@ const styles = {
     cursor: "pointer",
     fontSize: 12,
   },
-
-
   infoBox: {
     marginTop: 14,
     padding: "12px 14px",
@@ -1176,23 +934,17 @@ const styles = {
     borderLeft: "4px solid #2B7CD3",
     borderRadius: 8,
   },
-
-
   infoTitle: {
     fontSize: 12,
     fontWeight: 600,
     color: "#185FA5",
     marginBottom: 6,
   },
-
-
   infoText: {
     fontSize: 11,
     lineHeight: 1.6,
     color: "#35546D",
   },
-
-
   previewImageBox: {
     width: "100%",
     height: 350,
@@ -1201,29 +953,21 @@ const styles = {
     border: "1px solid var(--border-color)",
     background: "#000000",
   },
-
-
   previewImage: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
   },
-
-
   statGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(2,1fr)",
     gap: 6,
     marginTop: 8,
   },
-
-
   statCard: {
     background: "var(--bg-secondary)",
     borderRadius: "var(--radius-md)",
     padding: "8px",
     textAlign: "center",
   },
-
-
 };

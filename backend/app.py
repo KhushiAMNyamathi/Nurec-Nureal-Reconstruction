@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from pydantic import BaseModel
 from tkinter import Tk
-from tkinter.filedialog import askdirectory
+from tkinter.filedialog import askdirectory,asksaveasfilename
 import pycolmap
 CURRENT_COLMAP_PROJECT = None
 
@@ -239,19 +239,17 @@ async def colmap_progress(websocket: WebSocket):
 class ColmapRequest(BaseModel):
 
     project_path: str
-
     image_path: str
-
     camera_model: str
     single_camera: bool
-
     max_image_size: int
-
     affine_shape: bool
-
     domain_pooling: bool
-
     gpu_matching: bool
+
+class ExportRequest(BaseModel):
+    format: str
+    output_path: str
 # =========================
 # RUN COLMAP PLACEHOLDER
 # =========================
@@ -805,6 +803,223 @@ def get_colmap_cameras(project_path: str):
 
         print(
             "Camera extraction error:",
+            e
+        )
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=str(e)
+
+        )
+
+# =========================
+# COLMAP MODEL EXPORT
+# =========================
+@app.get("/select-export-file")
+def select_export_file(format: str):
+
+    format = format.upper()
+
+    extension_map = {
+        "NVM": ".nvm",
+        "BUNDLER": ".out",
+        "VRML": ".wrl"
+    }
+
+    if format not in extension_map:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported export format"
+        )
+
+    extension = extension_map[format]
+
+    root = Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    root.update()
+
+    file_path = asksaveasfilename(
+        parent=root,
+        title=f"Export COLMAP as {format}",
+        defaultextension=extension,
+        filetypes=[
+            (f"{format} files", f"*{extension}"),
+            ("All files", "*.*")
+        ]
+    )
+
+    root.destroy()
+
+    print("Selected export path:", file_path)
+
+    return {
+        "path": file_path
+    }
+
+@app.post("/api/colmap/export")
+def export_colmap(request: ExportRequest):
+
+    try:
+
+        # ---------------------------------
+        # Check current COLMAP project
+        # ---------------------------------
+
+        if CURRENT_COLMAP_PROJECT is None:
+
+            raise HTTPException(
+                status_code=400,
+                detail="No COLMAP project available. Run COLMAP first."
+            )
+
+        project_path = CURRENT_COLMAP_PROJECT
+
+        # ---------------------------------
+        # COLMAP sparse model
+        # ---------------------------------
+
+        sparse_model = os.path.join(
+            project_path,
+            "colmap",
+            "sparse",
+            "0"
+        )
+
+        if not os.path.exists(sparse_model):
+
+            raise HTTPException(
+                status_code=404,
+                detail=f"COLMAP sparse model not found: {sparse_model}"
+            )
+
+        # ---------------------------------
+        # Requested format
+        # ---------------------------------
+
+        export_format = request.format.upper()
+
+        # ---------------------------------
+        # Validate format
+        # ---------------------------------
+
+        format_map = {
+            "NVM": "NVM",
+            "BUNDLER": "Bundler",
+            "VRML": "VRML"
+        }
+
+        if export_format not in format_map:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported export format"
+            )
+
+        output_type = format_map[export_format]
+
+        # ---------------------------------
+        # Output path
+        # ---------------------------------
+
+        output_path = os.path.abspath(
+            request.output_path
+        )
+
+        # Create parent directory if needed
+
+        parent_directory = os.path.dirname(
+            output_path
+        )
+
+        if parent_directory:
+
+            os.makedirs(
+                parent_directory,
+                exist_ok=True
+            )
+
+        # ---------------------------------
+        # COLMAP command
+        # ---------------------------------
+
+        command = [
+
+            COLMAP_EXE,
+
+            "model_converter",
+
+            "--input_path",
+
+            sparse_model,
+
+            "--output_path",
+
+            output_path,
+
+            "--output_type",
+
+            output_type
+
+        ]
+
+        print()
+        print("========== COLMAP EXPORT ==========")
+        print("Format:", export_format)
+        print("Input:", sparse_model)
+        print("Output:", output_path)
+        print("Command:")
+        print(" ".join(command))
+
+        # ---------------------------------
+        # Run COLMAP
+        # ---------------------------------
+
+        subprocess.run(
+            command,
+            check=True
+        )
+
+        print("EXPORT COMPLETE")
+        print("====================================")
+
+        return {
+
+            "status": "success",
+
+            "format": export_format,
+
+            "outputPath": output_path,
+
+            "message": "COLMAP export completed successfully"
+
+        }
+
+    except subprocess.CalledProcessError as e:
+
+        print(
+            "COLMAP EXPORT ERROR:",
+            e
+        )
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail="COLMAP model export failed"
+
+        )
+
+    except HTTPException:
+
+        raise
+
+    except Exception as e:
+
+        print(
+            "EXPORT ERROR:",
             e
         )
 

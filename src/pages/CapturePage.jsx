@@ -1,7 +1,5 @@
 import { useRef, useState } from "react";
 import { BtnPrimary, BtnSecondary } from "../components/ui";
-
-
 export default function CapturePage({
   onNavigate,
   captureData,
@@ -15,7 +13,6 @@ export default function CapturePage({
   const videoInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-
   // helper
   const completeUpload = () => {
     setCaptureData((prev) => ({
@@ -26,7 +23,6 @@ export default function CapturePage({
       },
     }));
   };
-
   const completePrepare = () => {
     setCaptureData((prev) => ({
       ...prev,
@@ -36,7 +32,6 @@ export default function CapturePage({
       },
     }));
   };
-
   const completeValidation = () => {
     setCaptureData((prev) => ({
       ...prev,
@@ -46,7 +41,6 @@ export default function CapturePage({
       },
     }));
   };
-
   //states
   const [validationMsg, setValidationMsg] = useState("");
   const [imageFolderPath, setImageFolderPath] = useState("");
@@ -55,16 +49,13 @@ export default function CapturePage({
   //   prepare: false,
   //   validate: false,
   // });
-
   const [validationResult, setValidationResult] = useState({
     passed: false,
     message: "",
     imageCount: 0,
   });
-
   // ── images state ──
   const [images, setImages] = useState([]);
-
   // ── video state ──
   const [inputType, setInputType] = useState("image"); // "image" | "video"
   const [videoFile, setVideoFile] = useState(null);
@@ -76,8 +67,6 @@ export default function CapturePage({
   const [quality, setQuality] = useState(85);
   const [interval, setInterval] = useState(1); // seconds
   const [extractionMode, setExtractionMode] = useState("interval");
-
-
   // ── validation state ──
   const [validation, setValidation] = useState({
     score: 0,
@@ -89,21 +78,14 @@ export default function CapturePage({
     unsupported: 0,
     lowResolution: 0,
   });
-
   // ── handlers ──
   // uploading to backend
   const uploadImagesToBackend = async (uploadedImages) => {
-
     try {
-
       const formData = new FormData();
-
-
       uploadedImages.forEach((img) => {
         formData.append("files", img);
       });
-
-
       const response = await fetch(
         "http://127.0.0.1:8000/upload-images",
         {
@@ -111,104 +93,56 @@ export default function CapturePage({
           body: formData,
         }
       );
-
-
       if (!response.ok) {
         throw new Error("Upload failed");
       }
-
-
       const data = await response.json();
-
       console.log("Backend response:", data);
-
-
-
       setCaptureData(prev => ({
         ...prev,
-
         captureStatus: {
           ...prev.captureStatus,
-
           upload: true,
-
           prepare: true,
-
         }
-
       }));
-
-
     }
     catch (error) {
-
       console.error(error);
-
     }
-
   };
-
   const handleFolderSelect = async (e) => {
-
     const files = Array.from(e.target.files)
       .filter((f) => f.type.startsWith("image/"));
-
     if (files.length === 0) return;
-
-
     console.log("Selected images:", files.length);
-
-
     // Get folder name
     const folderName =
       files[0].webkitRelativePath.split("/")[0];
-
-
     const folderPath =
       `uploads/${folderName}`;
-
-
     console.log("Selected folder path:", folderPath);
-
-
     // Update App.jsx imagePath state
     setImagePath(folderPath);
-
     // Local state
     setImages(files);
-
     // Parent capture state
     setCaptureData(prev => ({
       ...prev,
-
       images: files,
-
       imagePath: folderPath,
-
       captureStatus: {
         ...prev.captureStatus,
-
         upload: true,
-
         prepare: true,
-
       }
-
     }));
-
-
     console.log("Capture state updated");
-
-
     // Backend upload
     await uploadImagesToBackend(files);
-
   };
-
-
   const handleDrop = (e) => {
     e.preventDefault();
-
     const files = Array.from(e.dataTransfer.files).filter((f) =>
       f.type.startsWith("image/")
     );
@@ -224,37 +158,21 @@ export default function CapturePage({
       }
     }));
   };
-
   const handleVideoSelect = (e) => {
-
     const file = e.target.files[0];
-
     if (!file) return;
-
-
     setVideoFile(file);
-
     setVideoReady(false);
-
     setVideoUrl(URL.createObjectURL(file));
-
-
     setCaptureData(prev => ({
       ...prev,
-
       videoFile: file,
-
       captureStatus: {
         ...prev.captureStatus,
-
         upload: true,
-
       }
-
     }));
-
   };
-
   const handleVideoDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -263,7 +181,6 @@ export default function CapturePage({
     setVideoReady(false);
     setVideoUrl(URL.createObjectURL(file));
   };
-
   const handleRemoveVideo = (e) => {
     e.stopPropagation();
     setVideoFile(null);
@@ -271,27 +188,22 @@ export default function CapturePage({
     setVideoReady(false);
     setImages([]);
   };
-
   const onVideoMeta = () => {
     const v = videoRef.current;
     if (!v) return;
-
     setVideoMeta({
       width: v.videoWidth,
       height: v.videoHeight,
       duration: v.duration,
     });
-
     setVideoReady(true);
   };
-
   // Estimated frame count based on sampling mode
   const estimatedFrames = videoReady
     ? extractionMode === "all"
       ? Math.floor(videoMeta.duration * 30) // assuming 30 FPS
       : Math.floor(videoMeta.duration / interval)
     : 0;
-
   const extractFrames = async () => {
     if (!videoReady) { alert("Video is still loading."); return; }
     const video = videoRef.current;
@@ -299,10 +211,8 @@ export default function CapturePage({
       alert("Video metadata not loaded yet. Please try again.");
       return;
     }
-
     let frameCount;
     let captureInterval;
-
     if (extractionMode === "all") {
       const fps = 30; // Replace with actual FPS if available
       frameCount = Math.floor(video.duration * fps);
@@ -312,13 +222,10 @@ export default function CapturePage({
       captureInterval = interval;
     }
     if (!frameCount || frameCount <= 0) { alert("Invalid frame count."); return; }
-
     setExtracting(true);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     const frames = [];
-
-
     for (let i = 0; i < frameCount; i++) {
       const captureTime = i * captureInterval;
       await new Promise((resolve) => {
@@ -328,9 +235,7 @@ export default function CapturePage({
           canvas.height = video.videoHeight;
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           canvas.toBlob((blob) => {
-
             const ext = outputFormat === "png" ? "png" : "jpg";
-
             frames.push(
               new File(
                 [blob],
@@ -342,138 +247,92 @@ export default function CapturePage({
                 }
               )
             );
-
             resolve();
-
           },
             outputFormat === "png"
               ? "image/png"
               : "image/jpeg",
-
             quality / 100
           );
         };
       });
     }
-
     setImages(frames);
-
     await uploadImagesToBackend(frames);
-
     setExtracting(false);
-
     completePrepare();
   };
-
   const validateDataset = async () => {
-
     if (images.length === 0) {
       alert("Please upload or extract images first.");
       return;
     }
-
     const unsupported = images.filter(
       (img) => !["image/jpeg", "image/png"].includes(img.type)
     ).length;
-
     let lowResolution = 0;
-
     await Promise.all(
       images.map(
         (img) =>
           new Promise((resolve) => {
-
             const image = new Image();
-
             image.onload = () => {
-
               if (
                 image.width < 1280 ||
                 image.height < 720
               ) {
                 lowResolution++;
               }
-
               resolve();
-
             };
-
             image.src = URL.createObjectURL(img);
-
           })
       )
     );
-
     let overlap = "Poor";
-
     if (images.length >= 100)
       overlap = "Excellent";
     else if (images.length >= 50)
       overlap = "Good";
     else if (images.length >= 20)
       overlap = "Average";
-
     let score = 100;
-
     if (images.length < 20)
       score -= 30;
-
     if (unsupported > 0)
       score -= unsupported * 5;
-
     if (lowResolution > 0)
       score -= lowResolution * 2;
-
     score = Math.max(score, 0);
-
     setValidation({
-
       score,
-
       overlap,
-
       sharpness: "Pending",
-
       exposure: "Pending",
-
       focus: "Pending",
-
       motionBlur: "Pending",
-
       unsupported,
-
       lowResolution,
-
     });
-
     if (
       images.length >= 20 &&
       unsupported === 0 &&
       lowResolution === 0
     ) {
-
       completeValidation();
-
       alert("Dataset validation completed successfully.");
-
     } else {
-
       alert("Dataset validation failed. Please fix the highlighted issues.");
-
     }
-
   };
-
   const totalSizeMB = images.length
     ? (images.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024)).toFixed(2)
     : "0";
-
   const fmtTime = (sec) => {
     if (!sec || isNaN(sec)) return "00:00:00";
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
     return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
   };
-
   const estimatedSizeGB = (estimatedFrames * 0.005).toFixed(1); // rough estimate
   const canProceed =
     captureData.captureStatus.upload &&
@@ -494,14 +353,12 @@ export default function CapturePage({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Capture Scene</h1>
-
           <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             Capture images of your scene using a single camera. You can upload images directly or upload a video and extract frames.
           </p>
         </div>
         <BtnSecondary>❓ Capture Guidelines</BtnSecondary>
       </div>
-
       {/* Tab toggle */}
       <div style={s.tabRow}>
         <button style={{ ...s.tabBtn, ...(inputType === "image" ? s.tabActive : {}) }} onClick={() => setInputType("image")}>
@@ -511,17 +368,14 @@ export default function CapturePage({
           📹 Video <span style={s.newBadge}>New</span>
         </button>
       </div>
-
       {/* 3 cards row */}
       <div style={s.grid3}>
-
         {/* ══ CARD 1 — Upload ══ */}
         <Card>
           {inputType === "image" ? (
             <>
               <CardTitle num={1}>Upload Images</CardTitle>
               <CardSub>Upload your captured images.</CardSub>
-
               <div style={s.dropZone} onClick={() => fileInputRef.current.click()} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
                 <div style={{ fontSize: 30 }}>🖼️</div>
                 <div style={{ fontSize: 12, color: "var(--text-secondary)", margin: "10px 0 4px" }}>Drag and drop images here</div>
@@ -529,7 +383,6 @@ export default function CapturePage({
                 <button style={s.browseBtn} onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}>Browse Images</button>
               </div>
               <input ref={fileInputRef} type="file" multiple accept="image/*" style={{ display: "none" }} onChange={handleFolderSelect} {...{ webkitdirectory: "" }} />
-
               {images.length > 0 && (
                 <div style={s.successRow}>
                   <span style={{ color: "var(--nvidia-green)" }}>✓</span>
@@ -546,7 +399,6 @@ export default function CapturePage({
             <>
               <CardTitle num={1}>Upload Video</CardTitle>
               <CardSub>Upload a video of your scene to extract images.</CardSub>
-
               {!videoFile ? (
                 <div style={s.dropZone} onClick={() => videoInputRef.current.click()} onDragOver={(e) => e.preventDefault()} onDrop={handleVideoDrop}>
                   <div style={{ fontSize: 30 }}>📹</div>
@@ -567,16 +419,13 @@ export default function CapturePage({
                 </div>
               )}
               <input ref={videoInputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={handleVideoSelect} />
-
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8 }}>Supported formats: MP4, MOV, AVI, MKV · Max file size: 10 GB</div>
               <div style={{ fontSize: 10, color: "#185fa5", marginTop: 2, cursor: "pointer" }}>Video Requirements ⓘ</div>
-
               {/* hidden canvas for extraction */}
               <canvas ref={canvasRef} style={{ display: "none" }} />
             </>
           )}
         </Card>
-
         {/* ══ CARD 2 — Dataset Summary (image) / Extract Frames (video) ══ */}
         {inputType === "image" ? (
           <Card>
@@ -592,10 +441,8 @@ export default function CapturePage({
           <Card>
             <CardTitle num={2}>Extraction Settings</CardTitle>
             <CardSub>Configure how frames should be extracted.</CardSub>
-
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600 }}>Output Format</div>
-
               <select
                 value={outputFormat}
                 onChange={(e) => setOutputFormat(e.target.value)}
@@ -605,7 +452,6 @@ export default function CapturePage({
                 <option value="png">PNG</option>
               </select>
             </div>
-
             {outputFormat === "jpeg" && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{
@@ -616,7 +462,6 @@ export default function CapturePage({
                   <span>Quality</span>
                   <span>{quality}%</span>
                 </div>
-
                 <input
                   type="range"
                   min="10"
@@ -627,12 +472,10 @@ export default function CapturePage({
                 />
               </div>
             )}
-
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600 }}>
                 Extraction Mode
               </div>
-
               <select
                 value={extractionMode}
                 onChange={(e) => {
@@ -640,7 +483,6 @@ export default function CapturePage({
                     alert("Please upload a video first.");
                     return;
                   }
-
                   setExtractionMode(e.target.value);
                 }}
                 style={s.numberInput}
@@ -649,13 +491,11 @@ export default function CapturePage({
                 <option value="all">Extract All Frames</option>
               </select>
             </div>
-
             {extractionMode === "interval" && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 600 }}>
                   Frame Interval
                 </div>
-
                 <input
                   type="number"
                   min={1}
@@ -663,17 +503,14 @@ export default function CapturePage({
                   onChange={(e) => setInterval(Number(e.target.value))}
                   style={s.numberInput}
                 />
-
                 <div style={{ fontSize: 11, color: "#888" }}>
                   ({interval}s)
                 </div>
               </div>
             )}
-
             <div style={{ marginBottom: 20 }}>
               Estimated: ~{estimatedFrames} frames
             </div>
-
             <BtnPrimary
               style={{ width: "100%", justifyContent: "center" }}
               onClick={extractFrames}
@@ -681,17 +518,14 @@ export default function CapturePage({
             >
               {extracting ? "Extracting..." : "Extract Frames"}
             </BtnPrimary>
-
           </Card>
         )}
-
         {/* ══ CARD 3 — Dataset Validation (same for both modes) ══ */}
         <Card>
           <CardTitle num={3}>Dataset Validation</CardTitle>
           <CardSub>
             {inputType === "video" ? "Validate your extracted images to check quality and coverage." : "Validate your dataset to check image quality and capture coverage."}
           </CardSub>
-
           <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginTop: 8 }}>
             <div style={{ flexShrink: 0 }}>
               <QualityRing value={validation.score} />
@@ -713,12 +547,10 @@ export default function CapturePage({
               />
             </div>
           </div>
-
           <BtnPrimary style={{ width: "100%", justifyContent: "center", marginTop: 14 }} onClick={validateDataset}>✓ Validate Dataset</BtnPrimary>
           <div style={{ textAlign: "center", fontSize: 10, color: "#185fa5", marginTop: 6, cursor: "pointer" }}>View Validation Details ▾</div>
         </Card>
       </div>
-
       {/* Image / Extracted Preview */}
       {images.length > 0 && (
         <Card style={{ marginTop: 14, height: "auto" }}>
@@ -736,7 +568,6 @@ export default function CapturePage({
           </div>
         </Card>
       )}
-
       {/* Tips */}
       <Card style={{ marginTop: 14, background: "#eaf4ff", border: "1px solid #b8d9ff", boxShadow: "none", height: "auto" }}>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -763,7 +594,6 @@ export default function CapturePage({
           </div>
         </div>
       </Card>
-
       {!canProceed && (
         <div
           style={{
@@ -776,7 +606,6 @@ export default function CapturePage({
           Please upload an image folder or video, complete dataset preparation, and validate the dataset before proceeding to COLMAP.
         </div>
       )}
-
       <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
         <BtnPrimary
           disabled={!canProceed}
@@ -792,9 +621,7 @@ export default function CapturePage({
     </div>
   );
 }
-
 /* ── Small components ── */
-
 function Card({ children, style }) {
   return (
     <div style={{
@@ -805,15 +632,12 @@ function Card({ children, style }) {
     }}>{children}</div>
   );
 }
-
 function CardTitle({ num, children }) {
   return <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{num}. {children}</div>;
 }
-
 function CardSub({ children }) {
   return <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 12 }}>{children}</div>;
 }
-
 function SummaryRow({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "6px 0", borderBottom: "1px solid #f4f4f4" }}>
@@ -822,7 +646,6 @@ function SummaryRow({ label, value }) {
     </div>
   );
 }
-
 function ValRow({ label, value, warn }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, padding: "4px 0" }}>
@@ -834,7 +657,6 @@ function ValRow({ label, value, warn }) {
     </div>
   );
 }
-
 function QualityRing({ value }) {
   const r = 38, circ = 2 * Math.PI * r;
   const dash = (value / 100) * circ;
@@ -847,7 +669,6 @@ function QualityRing({ value }) {
     </svg>
   );
 }
-
 /* ── Styles ── */
 const s = {
   tabRow: {
