@@ -1,0 +1,10 @@
+[package]
+version = "1.0.0"
+title = "NuRec Scene Loader"
+description = "Loads the NuRec 3DGUT USDZ result into Isaac Sim"
+
+[dependencies]
+"omni.usd" = {}
+
+[[python.module]]
+name = "nurec.scene_loader"

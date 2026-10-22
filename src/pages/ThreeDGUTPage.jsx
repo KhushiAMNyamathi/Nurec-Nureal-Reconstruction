@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Card,
   SectionTitle,
@@ -13,8 +13,256 @@ import {
 } from "../components/ui";
 import GaussianSplatCanvas from "../components/GaussianSplatCanvas";
 import warehouse from "../images/warehouse.png";
+import IsaacStreamViewer from "../components/IsaacStreamViewer";
 
 export default function ThreeDGUTPage({ onNavigate }) {
+
+  //states 
+  const terminalRef = useRef(null);
+  const [outputDirectory, setOutputDirectory] = useState(
+    "/home/adminusr/Shashank/3DGUT/3dgrut/data/results"
+  );
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingError, setTrainingError] = useState("");
+
+  const [trainingLogs, setTrainingLogs] = useState([]);
+  const [trainingStatus, setTrainingStatus] = useState("not_running");
+  const [exportFormat, setExportFormat] = useState("spz");
+  const [exportFolder, setExportFolder] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+
+
+  const handleFormatExport = async () => {
+    if (!exportFolder) {
+      alert("Please select an output folder first.");
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/3dgut/export-format",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            format: exportFormat,
+            output_dir: exportFolder,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.detail === "string"
+            ? data.detail
+            : JSON.stringify(data.detail ?? data)
+        );
+      }
+
+      alert(
+        `Export successful!\nFormat: ${data.format}\nSaved to: ${data.output_file}`
+      );
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert(`Export failed: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+
+  useEffect(() => {
+    if (!isTraining) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:8000/3dgut/status"
+        );
+
+        const data = await response.json();
+
+        setTrainingLogs(data.logs || []);
+        setTrainingStatus(data.status || "not_running");
+
+        if (data.status === "running") {
+          setIsTraining(true);
+        }
+
+        if (data.status === "completed") {
+          setIsTraining(false);
+        }
+
+        if (data.status === "stopped") {
+          setIsTraining(false);
+        }
+
+        if (data.status === "failed") {
+          setIsTraining(false);
+
+          const lastLog =
+            data.logs && data.logs.length > 0
+              ? data.logs[data.logs.length - 1]
+              : "3DGUT training failed.";
+
+          setTrainingError(lastLog);
+        }
+      } catch (error) {
+        console.error("3DGUT status error:", error);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTraining]);
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop =
+        terminalRef.current.scrollHeight;
+    }
+  }, [trainingLogs]);
+  const handleStartTraining = async () => {
+    try {
+      setTrainingError("");
+      setIsTraining(true);
+      const response = await fetch(
+        "http://127.0.0.1:8000/3dgut/start",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            out_dir: outputDirectory,
+            experiment_name: "3dgut_mcmc",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("3DGUT START:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Failed to start 3DGUT"
+        );
+      }
+
+      setIsTraining(true);
+
+    } catch (error) {
+
+      console.error(
+        "3DGUT START ERROR:",
+        error
+      );
+
+      alert(
+        "Failed to start 3DGUT:\n" +
+        error.message
+      );
+    }
+  };
+
+  const handleStopTraining = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/3dgut/stop",
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("3DGUT STOP:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Failed to stop 3DGUT"
+        );
+      }
+
+      setIsTraining(false);
+      setTrainingStatus(data.status || "stopped");
+
+    } catch (error) {
+      console.error(
+        "3DGUT STOP ERROR:",
+        error
+      );
+
+      setTrainingError(
+        "Failed to stop 3DGUT: " +
+        error.message
+      );
+    }
+  };
+
+  const handleSelectOutputDirectory = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/select-3dgut-output-folder"
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Failed to select output directory"
+        );
+      }
+
+      if (data.folder) {
+        setOutputDirectory(data.folder);
+      }
+
+    } catch (error) {
+      console.error("Output directory selection error:", error);
+
+      alert(
+        "Could not select output directory:\n" +
+        error.message
+      );
+    }
+  };
+
+  const handleSelectExportFolder = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/select-3dgut-output-folder"
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Failed to select export folder"
+        );
+      }
+
+      if (data.folder) {
+        setExportFolder(data.folder);
+      }
+    } catch (error) {
+      console.error("Export folder selection error:", error);
+
+      alert(
+        "Could not select export folder:\n" +
+        error.message
+      );
+    }
+  };
+
+
   return (
     <div>
       <div
@@ -43,8 +291,10 @@ export default function ThreeDGUTPage({ onNavigate }) {
           <SectionTitle num={1}>Training Configuration</SectionTitle>
           <Label>COLMAP Project</Label>
           <div style={styles.pathRow}>
-            <span style={styles.path}>D:/recon/colmap_project</span>
+            <span style={styles.path}>data/playroom_test</span>
+
             <span>📁</span>
+
           </div>
           <Label>Experiment Name</Label>
           <input defaultValue="warehouse_scan" style={styles.textInput} />
@@ -90,36 +340,117 @@ export default function ThreeDGUTPage({ onNavigate }) {
           <CheckRow label="Normalize Scene" checked />
           <CheckRow label="Generate Point Cloud (.ply)" />
 
-          <Label style={{ marginTop: 8 }}>Output Directory</Label>
+          <Label style={{ marginTop: 12 }}>
+            Output Directory
+          </Label>
+
           <div style={styles.pathRow}>
-            <span style={styles.path}>D:/recon/3dgut_output</span>
-            <span>📁</span>
+            <span style={styles.path}>
+              {outputDirectory}
+            </span>
+
+            <button
+              onClick={handleSelectOutputDirectory}
+              style={{
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: 16,
+              }}
+            >
+              📁
+            </button>
           </div>
           <BtnSecondary style={{ width: "100%", justifyContent: "center" }}>
             💾 Save Configuration
           </BtnSecondary>
+          <BtnPrimary
+            onClick={handleStartTraining}
+            disabled={isTraining}
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              marginTop: 10,
+            }}
+          >
+            ▶ Start Training
+          </BtnPrimary>
         </Card>
 
         {/* Progress */}
         <Card>
           <SectionTitle num={2}>Training Progress</SectionTitle>
-          <div style={styles.statusBadge}>In Progress</div>
+
+          <div style={styles.statusBadge}>
+            {trainingError
+              ? "Training Failed"
+              : isTraining
+                ? "In Progress"
+                : "Not Running"}
+          </div>
+
+          {trainingError && (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: "12px 14px",
+                borderRadius: 8,
+                border: "1px solid #ef4444",
+                background: "#fff1f1",
+                color: "#b91c1c",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: 12,
+                  marginBottom: 5,
+                }}
+              >
+                ⚠️ 3DGUT Training Error
+              </div>
+
+              <div
+                style={{
+                  fontSize: 11,
+                  lineHeight: 1.5,
+                }}
+              >
+                {trainingError}
+              </div>
+            </div>
+          )}
           <Grid cols={2} gap={8} style={{ marginBottom: 10 }}>
             <div>
-              <Label>Iteration</Label>
-              <strong style={{ fontSize: 11 }}>35,400 / 50,000</strong>
+              <Label>Status</Label>
+              <strong style={{ fontSize: 11 }}>
+                {trainingStatus === "running"
+                  ? "Running"
+                  : trainingStatus === "completed"
+                    ? "Completed"
+                    : trainingStatus === "failed"
+                      ? "Failed"
+                      : "Not Running"}
+              </strong>
             </div>
+
             <div>
-              <Label>Elapsed</Label>
-              <strong style={{ fontSize: 11 }}>01:23:45</strong>
-            </div>
-            <div>
-              <Label>ETA</Label>
-              <strong style={{ fontSize: 11 }}>00:42:18</strong>
+              <Label>PID</Label>
+              <strong style={{ fontSize: 11 }}>
+                {trainingStatus === "running" ? "Active" : "—"}
+              </strong>
             </div>
           </Grid>
+
+
           <Label>Overall Progress</Label>
-          <ProgressBar value={70} height={8} style={{ marginBottom: 2 }} />
+
+          <ProgressBar
+            value={isTraining ? 50 : trainingStatus === "completed" ? 100 : 0}
+            height={8}
+            style={{ marginBottom: 2 }}
+          />
+
           <div
             style={{
               textAlign: "right",
@@ -128,7 +459,43 @@ export default function ThreeDGUTPage({ onNavigate }) {
               marginBottom: 10,
             }}
           >
-            70%
+            {isTraining
+              ? "Training..."
+              : trainingStatus === "completed"
+                ? "100%"
+                : "0%"}
+          </div>
+
+          <Label>3DGUT Terminal Output</Label>
+
+          <div
+            ref={terminalRef}
+            style={{
+              height: 180,
+              overflowY: "auto",
+              overflowX: "hidden",
+              background: "#0b0f0d",
+              border: "1px solid #26332b",
+              borderRadius: 8,
+              padding: "10px 12px",
+              marginBottom: 12,
+              fontFamily: "monospace",
+              fontSize: 10,
+              lineHeight: 1.55,
+              color: "#d1d5db",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {trainingLogs.length === 0 ? (
+              <div style={{ color: "#dbdbdb" }}>
+                Waiting for 3DGUT training output...
+              </div>
+            ) : (
+              trainingLogs.map((log, index) => (
+                <div key={index}>{log}</div>
+              ))
+            )}
           </div>
 
           <Label>Loss</Label>
@@ -149,7 +516,17 @@ export default function ThreeDGUTPage({ onNavigate }) {
             <BtnSecondary style={{ flex: 1, justifyContent: "center" }}>
               ⏸ Pause
             </BtnSecondary>
-            <button style={styles.stopBtn}>⏹ Stop</button>
+            <button
+              onClick={handleStopTraining}
+              disabled={!isTraining}
+              style={{
+                ...styles.stopBtn,
+                opacity: isTraining ? 1 : 0.45,
+                cursor: isTraining ? "pointer" : "not-allowed",
+              }}
+            >
+              ⏹ Stop Training
+            </button>
           </div>
         </Card>
 
@@ -170,7 +547,7 @@ export default function ThreeDGUTPage({ onNavigate }) {
             ))}
           </div>
           <div style={styles.previewImageBox}>
-            <img src={warehouse} alt="Warehouse" style={styles.previewImage} />
+            <IsaacStreamViewer />
           </div>
           <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11 }}>
             <div>
@@ -221,65 +598,107 @@ export default function ThreeDGUTPage({ onNavigate }) {
               justifyContent: "flex-end",
             }}
           >
-            <BtnPrimary onClick={() => onNavigate("isaac")}>
+
+
+            <BtnPrimary
+              onClick={async () => {
+                try {
+                  const response = await fetch(
+                    "http://127.0.0.1:8000/isaac/load-scene",
+                    {
+                      method: "POST",
+                    }
+                  );
+
+                  const result = await response.json();
+
+                  if (!response.ok) {
+                    throw new Error(
+                      result.detail || "Failed to load Isaac Sim scene"
+                    );
+                  }
+
+                  console.log("Isaac Sim scene loaded successfully:", result);
+                } catch (error) {
+                  console.error("Could not load the USDZ scene:", error);
+                  alert(`Could not load Isaac Sim scene: ${error.message}`);
+                }
+              }}
+            >
               Proceed to Isaac Sim →
             </BtnPrimary>
+
+
           </div>
         </Card>
 
-        {/* export */}
         <Card>
-          <SectionTitle num={4}>Export (After Training Completes)</SectionTitle>
+          <SectionTitle num={4}>Export in Different Formats</SectionTitle>
 
-          <Label>USDZ File</Label>
+          <Label>Select Export Format</Label>
 
-          <div style={styles.exportInfo}>
-            <div style={styles.exportField}>
-              <span style={styles.exportLabel}>USDZ File</span>
-              <div style={styles.exportValue}>
-                export_last.usdz <span>📁</span>
-              </div>
-            </div>
+          <select
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginTop: 8,
+              borderRadius: 8,
+              border: "1px solid #444",
+              background: "#1e1e1e",
+              color: "#fff",
+              fontSize: 14,
+            }}
+          >
+            <option value="spz">SPZ (.spz)</option>
+            <option value="splat">Splat (.splat)</option>
+            <option value="sog">SOG (.sog)</option>
+            <option value="compressed_ply">Compressed PLY (.compressed.ply)</option>
+            <option value="glb">GLB (.glb)</option>
+            <option value="html">HTML (.html)</option>
+          </select>
 
-            <div style={styles.exportField}>
-              <span style={styles.exportLabel}>File Size</span>
-              <strong>2.18 GB</strong>
-            </div>
-
-            <div style={styles.exportField}>
-              <span style={styles.exportLabel}>Last Modified</span>
-              <strong>May 20, 2024 10:31 AM</strong>
+          <div style={{ marginTop: 12 }}>
+            <span style={styles.exportLabel}>Output Folder</span>
+            <div
+              style={{
+                ...styles.exportValue,
+                marginTop: 6,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {exportFolder || "Please select an output folder"}
             </div>
           </div>
-
-          <button
-            style={{ ...styles.secondaryBtn, width: "100%", marginTop: 14 }}
-          >
-            📂 Open Output Folder
-          </button>
 
           <button
             style={{
               ...styles.secondaryBtn,
               width: "100%",
-              marginTop: 8,
-              opacity: 0.5,
+              marginTop: 10,
             }}
+            onClick={handleSelectExportFolder}
           >
-            ▶ Open in Isaac Sim
+            📂 Select Output Folder
           </button>
 
           <button
             style={{
               ...styles.primaryBtn,
               width: "100%",
-              marginTop: 18,
+              marginTop: 8,
+              opacity: isExporting ? 0.6 : 1,
             }}
-            onClick={() => onNavigate("isaac")}
+            onClick={handleFormatExport}
+            disabled={isExporting || !exportFolder}
           >
-            Proceed to Isaac Sim Deployment →
+            {isExporting ? "⏳ Exporting..." : "⬇ Export Selected Format"}
           </button>
         </Card>
+
+
+
       </Grid>
 
       {/* Info panel */}
@@ -343,7 +762,7 @@ function LossChart() {
       H -
       12 -
       ((Math.log(v) - Math.log(min)) / (Math.log(max) - Math.log(min))) *
-        (H - 20);
+      (H - 20);
 
     ctx.strokeStyle = "#2563EB";
     ctx.lineWidth = 2;

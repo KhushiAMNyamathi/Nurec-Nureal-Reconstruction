@@ -6,11 +6,11 @@ import { useEffect } from "react";
 import Cameras from "./Cameras";
 
 
-function PointCloud() {
+function PointCloud({ projectPath }) {
 
     const geometry = useLoader(
         PLYLoader,
-        "http://127.0.0.1:8000/point-cloud?project_path=C:/Users/adminusr/Desktop/demo1"
+        `http://127.0.0.1:8000/point-cloud?project_path=${encodeURIComponent(projectPath)}`
     );
 
 
@@ -59,6 +59,7 @@ function PointCloud() {
 
 export default function PointCloudViewer({
     height,
+    projectPath,
 }) {
     return (
 
@@ -94,9 +95,9 @@ export default function PointCloudViewer({
                     margin={1.5}
                 >
 
-                    <PointCloud />
+                    <PointCloud projectPath={projectPath} />
 
-                    <Cameras />
+                    <Cameras projectPath={projectPath} />
 
                 </Bounds>
 

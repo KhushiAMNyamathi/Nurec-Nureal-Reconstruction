@@ -11,7 +11,7 @@ import {
   ProgressBar,
 } from "../components/ui";
 import colmap from "../images/colmap.png";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PointCloudViewer from "../components/PointCloudViewer";
 const INITIAL_STEPS = [
   {
@@ -57,6 +57,9 @@ export default function ColmapPage({
   const [showViewer, setShowViewer] = useState(false);
   const [cameraModel, setCameraModel] =
     useState("PINHOLE");
+  useEffect(() => {
+    console.log("CAMERA MODEL STATE UPDATED:", cameraModel);
+  }, [cameraModel]);
   // const [imagePath, setImagePath] = useState(
   //   "D:/Projects/WarehouseScan/images"
   // );
@@ -332,6 +335,9 @@ export default function ColmapPage({
       setProgress(0);
       updateStep("feature");
       setProgress(20);
+      // testing
+      console.log("Camera model being sent to backend:", cameraModel);
+
       const response = await fetch(
         "http://127.0.0.1:8000/run-colmap",
         {
@@ -472,16 +478,38 @@ export default function ColmapPage({
             {/* Camera Model */}
             <div style={styles.section}>
               <Label>Camera Model</Label>
-              <Select
+              <select
                 value={cameraModel}
-                onChange={(e) => setCameraModel(e.target.value)}
-                options={[
+                onChange={(e) => {
+                  const selectedModel = e.target.value;
+                  console.log("USER SELECTED:", selectedModel);
+                  setCameraModel(selectedModel);
+                }}
+              >
+                {[
+                  "SIMPLE_PINHOLE",
                   "PINHOLE",
                   "SIMPLE_RADIAL",
                   "RADIAL",
                   "OPENCV",
-                ]}
-              />
+                  "FULL_OPENCV",
+                  "SIMPLE_RADIAL_FISHEYE",
+                  "RADIAL_FISHEYE",
+                  "OPENCV_FISHEYE",
+                  "FOV",
+                  "THIN_PRISM_FISHEYE",
+                  "RAD_TAN_THIN_PRISM_FISHEYE",
+                  "SIMPLE_FISHEYE",
+                  "FISHEYE",
+                  "SIMPLE_DIVISION",
+                  "DIVISION",
+                  "EUCM",
+                ].map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
             </div>
             {/* Feature Extraction */}
             <div style={styles.section}>
@@ -721,7 +749,7 @@ export default function ColmapPage({
             </SectionTitle>
             {
               colmapCompleted ? (
-                <PointCloudViewer />
+                <PointCloudViewer projectPath={projectPath} />
               ) : (
                 <div
                   style={{
@@ -853,7 +881,10 @@ export default function ColmapPage({
               >
                 ✕
               </button>
-              <PointCloudViewer height="100%" />
+              <PointCloudViewer
+                height="100%"
+                projectPath={projectPath}
+              />
             </div>
           </div>
         )

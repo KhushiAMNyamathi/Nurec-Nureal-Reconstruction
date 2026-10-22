@@ -2,38 +2,35 @@ import { useEffect, useState } from "react";
 import CameraFrustum from "./CameraFrustum";
 
 
-export default function Cameras() {
+export default function Cameras({ projectPath }) {
 
     const [cameras, setCameras] = useState([]);
 
 
     useEffect(() => {
 
-        async function loadCameras(){
+        async function loadCameras() {
 
             try {
 
                 const response = await fetch(
-                    "http://127.0.0.1:8000/colmap/cameras?project_path=C:/Users/adminusr/Desktop/demo1"
+                    `http://127.0.0.1:8000/colmap/cameras?project_path=${encodeURIComponent(projectPath)}`
                 );
 
-
                 const data = await response.json();
-
-
                 console.log(
                     "COLMAP Cameras:",
                     data
                 );
 
-
                 setCameras(
-                    data.cameras
+                    Array.isArray(data.cameras)
+                        ? data.cameras
+                        : []
                 );
 
-
             }
-            catch(error){
+            catch (error) {
 
                 console.error(
                     "Camera loading failed:",
@@ -48,31 +45,25 @@ export default function Cameras() {
         loadCameras();
 
 
-    },[]);
+    }, [projectPath]);
 
 
 
     return (
-
         <>
+            {
+                cameras.map(
+                    (camera) => (
 
-        {
-            cameras.map(
-                (camera)=>(
-
-                    <CameraFrustum
-
-                        key={camera.id}
-
-                        position={
-                            camera.position
-                        }
-
-                    />
-
+                        <CameraFrustum
+                            key={camera.id}
+                            position={
+                                camera.position
+                            }
+                        />
+                    )
                 )
-            )
-        }
+            }
 
         </>
 
